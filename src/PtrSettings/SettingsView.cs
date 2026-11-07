@@ -99,6 +99,15 @@ internal static class SettingsView
                     case IntSliderSetting slider when sliderTemplate != null:
                         AddSlider(content, sliderTemplate, slider);
                         break;
+                    case ActionSetting action:
+                        AddAction(
+                            content,
+                            durationRowTemplate,
+                            durationLabelTemplate,
+                            durationButtonTemplate,
+                            action,
+                            warning);
+                        break;
                     case DurationActionSetting action:
                         AddDurationAction(
                             content,
@@ -200,6 +209,76 @@ internal static class SettingsView
                 if (valueLabel != null)
                     valueLabel.text = setting.FormatValue(value);
             }));
+    }
+
+    private static void AddAction(
+        Transform content,
+        GameObject? rowTemplate,
+        TextMeshProUGUI? labelTemplate,
+        GameObject? buttonTemplate,
+        ActionSetting setting,
+        Action<string> warning)
+    {
+        if (rowTemplate == null || labelTemplate == null || buttonTemplate == null)
+        {
+            warning($"No UI template for action setting '{setting.Key}'.");
+            return;
+        }
+
+        var row = UnityEngine.Object.Instantiate(rowTemplate, content);
+        row.name = "Setting_" + setting.Key;
+        row.SetActive(true);
+        SetHeight(row, 50f);
+
+        for (int i = row.transform.childCount - 1; i >= 0; i--)
+            UnityEngine.Object.Destroy(row.transform.GetChild(i).gameObject);
+
+        var layout = row.GetComponent<HorizontalLayoutGroup>();
+        if (layout == null)
+        {
+            var existing = row.GetComponent<LayoutGroup>();
+            if (existing != null)
+                existing.enabled = false;
+
+            layout = row.AddComponent<HorizontalLayoutGroup>();
+        }
+
+        var padding = new RectOffset();
+        padding.left = 16;
+        padding.right = 16;
+        layout.padding = padding;
+        layout.spacing = 8f;
+        layout.childAlignment = TextAnchor.MiddleLeft;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+
+        var label = UnityEngine.Object.Instantiate(labelTemplate, row.transform);
+        label.name = "Label";
+        label.text = setting.Label;
+        label.fontSize = 18f;
+        label.alignment = TextAlignmentOptions.Left;
+        label.gameObject.SetActive(true);
+        SetLayoutSize(label.gameObject, 120f, 1f, 30f);
+
+        var button = UnityEngine.Object.Instantiate(buttonTemplate, row.transform);
+        button.name = "Apply";
+        button.SetActive(true);
+
+        if (!WireButton(button, setting.Apply))
+        {
+            UnityEngine.Object.Destroy(row);
+            warning($"Button template for action setting '{setting.Key}' is invalid.");
+            return;
+        }
+
+        var buttonLabel = FindTextAt(button.transform, 0);
+        if (buttonLabel != null)
+            buttonLabel.text = setting.ButtonText;
+
+        SetLayoutSize(button, 90f, 0f, 32f);
+        DisableLocalisation(row);
     }
 
     private static void AddDurationAction(
